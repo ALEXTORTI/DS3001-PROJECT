@@ -1,0 +1,458 @@
+---
+title: "DS 3001 Final Project"
+author: "Alexandra Torti, Parker Schell, Grace Callow, and Hailey"
+format: 
+  html:
+    mainfont: "Gill Sans"
+    toc: true
+    toc-title: "Index"
+    toc-depth: 2
+    smooth-scroll: true
+    toc-location: left
+    theme: "minty"
+editor: visual
+juypter: python3
+---
+```{python setup}
+#| include: false
+# Load libraries
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+```
+# Brian's Booze!
+
+```{python}
+#| echo: false
+#print social.png, make the size smaller
+from IPython.display import Image
+Image(filename='/Users/alexandratorti/DS-3001/DS-3001/types-of-doctors-1600114658.jpg', width=300, height=300)
+```
+
+
+# Question and background information
+
+We've been hired by a new fizzy seltzer brand called Brian's Booze. The company has hired us as Data Scientists to determine which countries have the highest alcohol consumption so that their marketing team can target those countries to build/sell their brand in. It is our job to use different lifestyle variables that will help predict which countries have the highest alcohol consumption per capita. 
+
+According to the National Library of Medicine, the differences in alcohol consumption per capita shed light on the different social, cultural, and political environments of different countries. Countries with high or low per capita alcohol consumption are referred to as wet or dry cultures, respectively. In wet cultures, alcohol is a part of daily life and social activities, examples include European countries in the Mediterranean. On the otherhand, in dry cultures, alcohol is not as prevalent in everyday life, so for example it would not be as freequent in meals. Abstinence is more common, but interestingly enough when drinking occurs, it is more likely to reesult in intoxication in these cultures. The United States, Canada, and Scandinavian countries are examples of drier cultures. So although a country may be deemed a more 'dry' or 'wet' country, it can still be a good target for an alcohol brand looking to break into the industry.
+
+
+## need to load in population data
+
+```{python}
+#lets import all out data
+#Alcohol Data
+alc_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/alcohol.csv")
+df_alc = pd.melt(alc_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='Alcohol Consumption')
+columns_to_drop = ['Series Name', 'Series Code', 'Country Code']
+df_alc = df_alc.drop(columns=columns_to_drop)
+df_alc.head()
+
+```
+```{python}
+#| include: false
+#Literacy Rate Data
+lit_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/Literacy_rate_data.csv")
+df_lit = pd.melt(lit_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='Literacy_rate')
+columns_to_drop = ['Series Name', 'Series Code', 'Country Code']
+df_lit = df_lit.drop(columns=columns_to_drop)
+df_lit.head()
+
+#Population Data
+pop_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/pop_data.csv")
+df_pop = pd.melt(pop_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='population_density')
+columns_to_drop = ['Series Name', 'Series Code', 'Country Code']
+df_pop = df_pop.drop(columns=columns_to_drop)
+df_pop.head()
+
+#Birth Rate Data
+birth_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/birthratedata.csv")
+df_birth = pd.melt(birth_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='birth_rate')
+df_birth = df_birth.drop(columns=columns_to_drop)
+df_birth.head()
+
+#Primary Edcuation in Labor Force Data
+primary_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/primary_edu_LF.csv")
+df_primary = pd.melt(primary_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='primary_rate')
+df_primary = df_primary.drop(columns=columns_to_drop)
+df_primary.head()
+
+#Intentional Homocide Data
+murder_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/intentional_homocide.csv")
+df_murder = pd.melt(murder_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='murder_rate')
+df_murder = df_murder.drop(columns=columns_to_drop)
+df_murder.head()
+
+#Unemployment Rate Data
+unem_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/unemploymentdata.csv")
+df_unem = pd.melt(unem_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='unemployment_rate')
+df_unem = df_unem.drop(columns=columns_to_drop)
+df_unem.head()
+
+#GDP Data
+gdp_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/gdpdata.csv")
+df_gdp = pd.melt(gdp_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='GDP')
+df_gdp = df_gdp.drop(columns=columns_to_drop)
+df_gdp.head()
+
+#Death Rate Data
+death_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/deathdata.csv")
+df_death = pd.melt(death_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='Death_rate')
+df_death = df_death.drop(columns=columns_to_drop)
+df_death.head()
+
+#Labor Force Participation Data
+labor_df = pd.read_csv("/Users/alexandratorti/DS-3001/DS-3001/Final_Project/laborparticipation.csv")
+df_labor = pd.melt(labor_df, id_vars=['Country Name', 'Country Code', 'Series Name', "Series Code"], var_name='Year', value_name='LF_rate')
+df_labor = df_labor.drop(columns=columns_to_drop)
+df_labor.head()
+```
+
+```{python}
+#now its time to merge all out dataframes. 
+# Merge DataFrames
+merged_df = pd.merge(df_lit, df_birth, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_unem, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_gdp, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_death, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_labor, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_alc, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_pop, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_murder, on=['Country Name', 'Year'])
+merged_df = pd.merge(merged_df, df_primary, on=['Country Name', 'Year'])
+merged_df.head()
+```
+
+## Drop variables that will not be needed 
+
+```{python}
+#lets take a look at our data and see what needs cleaning!
+merged_df.head()
+
+na_counts = merged_df.isna().sum()
+print(na_counts)
+# Check for NaN values in each row
+rows_with_na = merged_df.isna().any(axis=1)
+
+# Display rows with NaN values
+print("Rows with NaN values:")
+print(merged_df[rows_with_na])# there seems to be some errors when I merged the data frames that added a bunch of NaN values. Lets delete these extra rows because we will not need them
+
+# Drop rows with NaN values in column Country
+df_cleaned = merged_df.dropna(subset=['Country Name'], how='any')
+
+#DataFrame after dropping rows with NaN values in column Country Name
+# print(df_cleaned)
+
+na_counts = df_cleaned.isna().sum()
+print(na_counts)
+
+#Need to drop .. values so that we can transform values to floats
+df_cleaned.replace('..', np.nan, inplace=True)
+df_cleaned.info()
+
+
+#We need to change the columns that are objects to strings and floats
+columns_to_convert = ['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate","murder_rate", "primary_rate", "Alcohol Consumption"]
+df_cleaned[columns_to_convert] = df_cleaned[columns_to_convert].astype(float)
+
+
+columns_to_convert2 = ['Country Name', 'Year']
+df_cleaned[columns_to_convert2] = df_cleaned[columns_to_convert2].astype(str)
+
+# Add the line to calculate the growth rate
+df_cleaned['growth_rate'] = df_cleaned['birth_rate'] - df_cleaned['Death_rate']
+
+df_cleaned.info()
+```
+
+```{python}
+#| include: false
+#For the first time we cluster, lets use 2019 data.
+df = pd.DataFrame(df_cleaned)
+
+# Specify the year you want to keep
+target_year = '2019 [YR2019]'
+
+# Use boolean indexing to filter the DataFrame
+df_filtered = df[df['Year'] == target_year]
+
+# Display the result
+print(df_filtered)
+df_filtered.info()
+```
+
+```{python}
+#Now lets normalize the data!
+numeric_columns = df_filtered.select_dtypes("float", "int").columns
+print(numeric_columns)
+df_filtered[numeric_columns]= MinMaxScaler().fit_transform(df_filtered[numeric_columns])
+
+#Lets do a final Check on NaN values. 
+na_counts = df_filtered.isna().sum()
+print(na_counts)
+df_filtered.info()
+#Why dropping all NaN values shrinks our dataset a lot, it won't harm the integrity of the data. 
+#we will drop the NaN values here. 
+df_2019 = df_filtered.dropna()
+df_2019.info()
+
+```
+
+#The last step is to create bins for our target varibale
+```{python}
+#The last step is to create bins for out target varibale
+#will will determine low, high and medium consumption based off of how each country ranks compared to others. 
+# Calculate percentiles
+percentiles = [0, 0.33, 0.66, 1.0]
+percentile_values = df_2019['Alcohol Consumption'].quantile(percentiles)
+print(percentile_values)
+
+labels = ['Low', 'Medium', 'High']
+
+# Create the categorical variable
+df_2019["Alcohol Consumption Category"] = pd.cut(df_2019['Alcohol Consumption'], percentile_values, labels=labels)
+```
+## Run the clustering algo with your best guess for - this Alex
+
+```{python}
+#Run the clustering algo with your best guess for K
+clust_data = df_2019[['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate","primary_rate", "murder_rate", "growth_rate"]]
+kmeans_obj = KMeans(n_clusters=3, random_state=1).fit(clust_data)
+```
+## View the results- 2019 data
+
+```{python}
+#View the results
+print(kmeans_obj.cluster_centers_)
+print(kmeans_obj.labels_) #clusters for vector assignments
+print(kmeans_obj.inertia_) #distance from centroids, smaller is better
+```
+# Exploratory Data Analysis
+Exploratory Data Analysis (EDA) was conducted to gain insights into the relationships between variables and identify those most relevant for subsequent analysis. Data sets were merged to consolidate all independent variables, and data cleaning and modification were performed to ensure data quality and consistency. The dependent variable, alcohol consumption, was categorized into three levels: low, medium, and high, to facilitate clustering analysis. A correlation matrix was constructed to assess the strength and direction of associations between variables. This matrix served as a guide in selecting the most influential variables for further exploration and modeling. For the 2019 data, we found the highest correlation between variables and Alcohol Consumption to be Primary Education completion rate in the Labor force and death rate. Unsatisfied with our limited data, we added the rest of the data, 2015-2019, and found the correlation coefficients again. This time, there were high positive trends between our dependent and independent variables in GDP per capita, Growth rate, and Literacy rate. 
+```{python}
+#lets see which  variables best correlate with our target variable
+target_variable = "Alcohol Consumption"
+#I am going to make a correlation matrix to test which variables are important
+columns_of_interest = ['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate","primary_rate","murder_rate", "growth_rate"]
+
+# Select the specified columns and the salary column
+selected_data = df_2019[columns_of_interest + [target_variable]]
+
+# Calculate the correlation matrix
+correlation_matrix = selected_data.corr()
+
+# Print the correlation matrix
+print(correlation_matrix)#death rate and literacy rate seem to have the highest correlation, unemployment does too
+```
+# Methods
+Our strategy for our model was to first try to run our data with just 2019 statistics, when we saw that we had little data for this, we decided to use the next year we had available for alcohol consumption data and include 2015-2019 as well. After using both, we found similar results for our methods. We used the elbow method and silhouette scores to address our question of trying to help Brian’s Booze determine which market they should explore for alcoholic beverages. We used the elbow method to determine the optimal number of clusters for our clustering algorithm. The result of the elbow method was that five clusters would be optimal for our dataset, but we decided that we had too little data and using five clusters would be more confusing than using three clusters. In future analysis, we would include more data so that we could run our model using five clusters. For our silhouette scores, we see the clear peak or “elbow” of the graph at 5 clusters for our 2015 and 2019 data and for our 2019 data, it looks like it is 6 clusters. Once again, we thought using  clusters would be too confusing with how little data we had and we decided to stick with three clusters.
+
+## 
+```{python}
+fig = px.scatter(df_2019, x="primary_rate", y="Death_rate", color=kmeans_obj.labels_,
+                    title="Primary Education Rate vs. Death Rate")
+fig.show(renderer="browser")
+```
+## Evaluate the quality of the clustering using total variance explained and silhouette scores
+
+```{python}
+#Evaluate the quality of the clustering using total variance explained and silhouette scores
+total_sum_squares = np.sum((clust_data - np.mean(clust_data))**2)
+total = np.sum(total_sum_squares)
+print(total)
+
+between_SSE = (total-kmeans_obj.inertia_)
+print(between_SSE)
+Var_explained = between_SSE/total
+print(Var_explained)#variance explained looks good!
+```
+## Determine the ideal number of clusters using the elbow method and the silhouette coefficient 
+
+```{python}
+X=df_2019[columns_of_interest]
+# scale  features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# determine ideal number of clusters with elbow method
+wcss = []  # Within-Cluster-Sum-of-Squares
+
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=42)
+    kmeans.fit(X_scaled)
+    wcss.append(kmeans.inertia_)
+
+# plot elbow curve
+plt.plot(range(1, 11), wcss, marker='o')
+plt.title('Elbow Method for Optimal Number of Clusters')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS (Within-Cluster-Sum-of-Squares)')
+plt.show()
+
+from sklearn.metrics import silhouette_score
+
+# determine the ideal number of clusters using silhouette coefficient
+silhouette_scores = []
+
+for i in range(2, 11):
+    kmeans = KMeans(n_clusters=i, random_state=42)
+    kmeans.fit(X_scaled)
+    silhouette_scores.append(silhouette_score(X_scaled, kmeans.labels_))
+
+# plot silhouette scores
+plt.plot(range(2, 11), silhouette_scores, marker='o')
+plt.title('Silhouette Method for Optimal Number of Clusters')
+plt.xlabel('Number of Clusters')
+plt.ylabel('Silhouette Score')
+plt.show()
+
+#Run the clustering algo with your best guess for K
+clust_data1 = df_2019[['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate", "primary_rate", "growth_rate"]]
+kmeans_obj1 = KMeans(n_clusters=5, random_state=1).fit(clust_data)
+
+#Further assess the model using total variance explained
+#calculate total variance explained
+total_sum_squares1 = np.sum((clust_data1 - np.mean(clust_data1))**2)
+total1 = np.sum(total_sum_squares1)
+print(total1)
+between_SSE1 = (total-kmeans_obj1.inertia_)
+print(between_SSE1)
+Var_explained1 = between_SSE1/total
+print(Var_explained1)
+
+
+```
+## Based on our results we decided to use more data. This next part we included 2015-2019 data!
+```{python}
+#| include: false
+numeric_columns = df_cleaned.select_dtypes("float", "int").columns
+print(numeric_columns)
+df_cleaned[numeric_columns]= MinMaxScaler().fit_transform(df_cleaned[numeric_columns])
+
+#Lets do a final Check on NaN values. 
+na_counts = df_cleaned.isna().sum()
+print(na_counts)
+df_cleaned.info()
+#Why dropping all NaN values shrinks our dataset a lot, it won't harm the integrity of the data. 
+#we will drop the NaN values here. 
+df_2015_2019 = df_cleaned.dropna()
+df_2015_2019.info()
+
+#The last step is to creat bins for out terget varibale
+#will will determine low, high and medium consumption based off of how each country ranks compared to others. 
+# Calculate percentiles
+percentiles = [0, 0.33, 0.66, 1.0]
+percentile_values = df_2015_2019['Alcohol Consumption'].quantile(percentiles)
+print(percentile_values)
+
+labels = ['Low', 'Medium', 'High']
+
+# Create the categorical variable
+df_2015_2019["Alcohol Consumption Category"] = pd.cut(df_2015_2019['Alcohol Consumption'], percentile_values, labels=labels)
+
+
+clust_data = df_2015_2019[['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate","murder_rate", "primary_rate", "growth_rate"]]
+kmeans_obj = KMeans(n_clusters=3, random_state=1).fit(clust_data)
+
+#View the results
+print(kmeans_obj.cluster_centers_)
+print(kmeans_obj.labels_) #clusters for vector assignments
+print(kmeans_obj.inertia_) #distance from centroids, smaller is better
+
+#lets see which  variables best correlate with our target variable
+target_variable = "Alcohol Consumption"
+#I am going to make a correlation matrix to test which variables are important
+columns_of_interest = ['Literacy_rate', 'birth_rate', "unemployment_rate", "GDP", "Death_rate", "LF_rate", "primary_rate","murder_rate", "growth_rate"]
+
+# Select the specified columns and the salary column
+selected_data = df_2015_2019[columns_of_interest + [target_variable]]
+
+# Calculate the correlation matrix
+correlation_matrix = selected_data.corr()
+
+# Print the correlation matrix
+print(correlation_matrix)#death rate and literacy rate seem to have the highest correlation, unemployment does too
+
+fig = px.scatter_3d(df_2015_2019, x="GDP", y="growth_rate", z="Literacy_rate", color=kmeans_obj.labels_,
+                    title="GDP vs. Growth Rate vs. Literacy_rate")
+fig.show(renderer="browser")
+```
+
+```{python}
+#Evaluate the quality of the clustering using total variance explained and silhouette scores
+total_sum_squares = np.sum((clust_data - np.mean(clust_data))**2)
+total = np.sum(total_sum_squares)
+print(total)
+
+between_SSE = (total-kmeans_obj.inertia_)
+print(between_SSE)
+Var_explained = between_SSE/total
+print(Var_explained)#variance explained looks good!
+
+X=df_2015_2019[columns_of_interest]
+
+# scale  features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# determine ideal number of clusters with elbow method
+wcss = []  # Within-Cluster-Sum-of-Squares
+
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=42)
+    kmeans.fit(X_scaled)
+    wcss.append(kmeans.inertia_)
+
+# plot elbow curve
+plt.plot(range(1, 11), wcss, marker='o')
+plt.title('Elbow Method for Optimal Number of Clusters')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS (Within-Cluster-Sum-of-Squares)')
+plt.show()
+
+
+# determine the ideal number of clusters using silhouette coefficient
+silhouette_scores = []
+
+for i in range(2, 11):
+    kmeans = KMeans(n_clusters=i, random_state=42)
+    kmeans.fit(X_scaled)
+    silhouette_scores.append(silhouette_score(X_scaled, kmeans.labels_))
+
+# plot silhouette scores
+plt.plot(range(2, 11), silhouette_scores, marker='o')
+plt.title('Silhouette Method for Optimal Number of Clusters')
+plt.xlabel('Number of Clusters')
+plt.ylabel('Silhouette Score')
+plt.show()
+```
+# Evaluation of your model
+
+The total variance explained value of .839 in our model signifies that a significant portion of the data’s variability is accounted for. Although this value could be enhanced by adjusting the number of clusters to 5, the existing model is sufficiently refined to support informed decisions regarding which markets to explore.
+
+Part about model visualization
+
+# Fairness assessment 
+
+# Future work
+In subsequent efforts, acquiring a more extensive dataset is a priority as the primary challenge in constructing this model stemmed from the inconsistency of data across our original datasets over an extended timeframe. Due to this limitation, we opted for a model with 3 clusters instead of 5, as suggested by the elbow method and silhouette score. The goal is to access data spanning the past two decades rather than just 2015 and 2019, enabling the development of a more precise model that effectively captures data variance. With this enhanced dataset, we intend to identify target countries using the refined model, providing valuable insights for Brian’s Booze expansion strategy.
+
+
+
+
+
+
+
+
+:::
+
+
