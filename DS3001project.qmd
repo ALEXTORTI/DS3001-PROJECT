@@ -39,6 +39,7 @@ Image(filename='/Users/gracecallow/DS-3001-8/data/adult/IMG_3680.png', width=300
 
 
 # Question and background information
+GIT HUB LINK: https://github.com/ALEXTORTI/DS3001-PROJECT
 
 We've been hired by a new fizzy seltzer brand called Brian's Booze. The company has hired us as Data Scientists to determine which countries have the highest alcohol consumption so that their marketing team can target those countries to build/sell their brand in. It is our job to use different lifestyle variables that will help predict which countries have the highest alcohol consumption per capita. 
 
